@@ -1,49 +1,1302 @@
-const KEY="fixora_bookings_v3", PROFILE="fixora_profile_v1", ADDR="fixora_addresses_v1", FAV="fixora_favorites_v1";
-let bookings=JSON.parse(localStorage.getItem(KEY)||"[]"), service="AC & Cooling";
-const prices={"AC & Cooling":"₹399–₹699",Electrical:"₹299–₹799",Plumbing:"₹349–₹899",Cleaning:"₹499–₹1,299",Appliances:"₹399–₹999",Painting:"₹1,499+",Carpentry:"₹499–₹1,499",Other:"₹399+"};
-const professionals={"AC & Cooling":"Ramesh Kumar",Electrical:"Sneha M.",Plumbing:"Arjun Kumar",Cleaning:"Fixora Cleaning Pro",Appliances:"Fixora Appliance Pro",Painting:"Fixora Painting Pro",Carpentry:"Fixora Carpentry Pro",Other:"Fixora General Pro"};
-const states=["Confirmed","Professional assigned","On the way","Service started","Completed"];
-const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-function save(){localStorage.setItem(KEY,JSON.stringify(bookings));render()}
-function openModal(x){document.getElementById("modalContent").innerHTML=x;document.getElementById("modal").classList.add("show")}
-function closeModal(){document.getElementById("modal").classList.remove("show")}
-function openAuth(){location.href="login.html"}
-function currentUser(){return JSON.parse(localStorage.getItem("fixora_user")||"null")}
-function logout(){localStorage.removeItem("fixora_user");updateAuth();alert("Logged out successfully.")}
-function updateAuth(){const a=document.querySelector(".actions"),u=currentUser();if(!a)return;a.innerHTML=u?`<button class="userPill" onclick="openProfile()">◉ ${esc(u.name)}</button><button class="textBtn" onclick="logout()">Logout</button><button class="btn small" onclick="openBooking()">Book a Service ↗</button>`:`<a class="textBtn" href="login.html" style="text-decoration:none">Login</a><button class="btn small" onclick="openBooking()">Book a Service ↗</button>`}
-function openBooking(s="AC & Cooling"){
- service=s;const choices=Object.keys(prices).map(x=>`<button class="choice ${x===service?"active":""}" onclick="chooseService('${x}')">${x}</button>`).join("");
- const addresses=JSON.parse(localStorage.getItem(ADDR)||"[]");
- openModal(`<span class="eyebrow">NEW BOOKING</span><h2>Book a service</h2><p>Choose your service, professional, time and address.</p><div class="choiceGrid">${choices}</div><div class="form"><label>PROFESSIONAL</label><select id="pro"><option>${esc(professionals[service])}</option><option>Any verified professional</option></select><label>DATE</label><input id="date" type="date" min="${new Date().toISOString().slice(0,10)}"><label>TIME</label><select id="time"><option>9:00 AM</option><option>11:00 AM</option><option>2:00 PM</option><option>4:00 PM</option><option>6:30 PM</option></select><label>ADDRESS</label><select id="addressSelect" onchange="fillAddress()"><option value="">Choose saved address</option>${addresses.map((a,i)=>`<option value="${i}">${esc(a.label)} — ${esc(a.address)}</option>`).join("")}</select><textarea id="address" placeholder="House no, street, city"></textarea><label>PROBLEM</label><textarea id="problem" placeholder="Describe the issue"></textarea><button class="btn" onclick="confirmBooking()">Continue to Payment →</button></div>`)}
-function chooseService(s){openBooking(s)}
-function fillAddress(){const a=JSON.parse(localStorage.getItem(ADDR)||"[]")[document.getElementById("addressSelect").value];if(a)document.getElementById("address").value=a.address}
-function confirmBooking(){if(!currentUser()){closeModal();openAuth();return}const date=document.getElementById("date").value,address=document.getElementById("address").value.trim();if(!date||!address){alert("Please select a date and enter your address.");return}const b={id:"FX"+Date.now().toString().slice(-7),service,pro:document.getElementById("pro").value,date,time:document.getElementById("time").value,address,problem:document.getElementById("problem").value,status:"Confirmed",estimate:prices[service],payment:"Pending",createdAt:Date.now()};pendingPayment=b}
-let pendingPayment=null;
-function showPayment(b){pendingPayment=b;const base=parseInt((b.estimate.match(/\d[\d,]*/)||["399"])[0].replace(/,/g,""));const fee=20,total=base+fee;openModal(`<span class="eyebrow">SECURE CHECKOUT</span><h2>Complete payment</h2><p>${esc(b.service)} · ${esc(b.date)} · ${esc(b.time)}</p><div class="paySummary"><span>Service estimate</span><b>₹${base}</b><span>Platform fee</span><b>₹${fee}</b><strong>Total</strong><strong>₹${total}</strong></div><div class="paymentMethods"><button class="payChoice active" onclick="pickPay(this,'UPI')">◉ UPI</button><button class="payChoice" onclick="pickPay(this,'Card')">▣ Card</button><button class="payChoice" onclick="pickPay(this,'Net Banking')">⌁ Net Banking</button><button class="payChoice" onclick="pickPay(this,'Cash')">₹ Cash after service</button></div><div id="payFields" class="form"><label>UPI ID</label><input id="upi" placeholder="name@upi"></div><button class="btn" onclick="completePayment(${total})">Pay ₹${total} →</button><small class="secureNote">Demo checkout UI. Connect a real payment gateway before charging customers.</small>`)}
-let paymentMethod="UPI";
-function pickPay(el,m){paymentMethod=m;document.querySelectorAll(".payChoice").forEach(x=>x.classList.remove("active"));el.classList.add("active");document.getElementById("payFields").innerHTML=m==="UPI"?'<label>UPI ID</label><input id="upi" placeholder="name@upi">':m==="Card"?'<label>CARD NUMBER</label><input id="card" maxlength="19" placeholder="1234 5678 9012 3456"><label>EXPIRY / CVV</label><input placeholder="MM/YY · CVV">':m==="Net Banking"?'<label>BANK</label><select><option>Choose your bank</option><option>HDFC Bank</option><option>ICICI Bank</option><option>SBI</option></select>':'<p class="cashNote">You can pay the professional after the service.</p>'}
-function completePayment(total){if(!pendingPayment)return;pendingPayment.payment=paymentMethod==="Cash"?"Pay after service":"Paid";pendingPayment.transaction=paymentMethod==="Cash"?"PAY-LATER":"TX"+Date.now().toString().slice(-8);pendingPayment.total=total;bookings.unshift(pendingPayment);const a=JSON.parse(localStorage.getItem(ADDR)||"[]");if(!a.some(x=>x.address===pendingPayment.address)){a.unshift({label:"Recent",address:pendingPayment.address});localStorage.setItem(ADDR,JSON.stringify(a.slice(0,5)))}save();const b=pendingPayment;pendingPayment=null;openModal(`<div class="success"><div class="big">✓</div><span class="eyebrow">${b.payment==="Paid"?"PAYMENT SUCCESSFUL":"BOOKING CONFIRMED"}</span><h2>${b.payment==="Paid"?"Payment successful!":"Booking confirmed!"}</h2><p><b>${b.id}</b> · ${esc(b.service)}</p><p>${esc(b.date)} at ${esc(b.time)} · ${esc(b.pro)}</p><p>Transaction: ${b.transaction}</p><button class="btn" onclick="closeModal();document.getElementById('dashboard').scrollIntoView({behavior:'smooth'})">View Booking →</button></div>`)}
-function render(){const box=document.getElementById("bookingList");if(!box)return;const u=currentUser();if(!u){box.innerHTML='<div class="emptyState">Login to see your bookings, payments and service history.</div>';return}if(!bookings.length){box.innerHTML='<div class="emptyState">No bookings yet. Click <b>New Booking</b> to get started.</div>';return}box.innerHTML=`<div class="dashTools"><button onclick="openProfile()">👤 Profile</button><button onclick="openAddresses()">🏠 Addresses</button><button onclick="openNotifications()">🔔 Notifications</button><button onclick="openHistory()">📜 History</button><button onclick="openFavorites()">❤️ Favorites</button></div>`+bookings.map((x,i)=>`<article class="booking"><div><h3>${esc(x.service)}</h3><p>Booking ID: ${esc(x.id)}</p><p>${esc(x.problem||"Home service request")}</p></div><div><small>📅 ${esc(x.date)} · ⏰ ${esc(x.time)}</small><p>👨‍🔧 ${esc(x.pro)}</p><p>📍 ${esc(x.address)}</p></div><div><span class="status">${esc(x.status)}</span><p>${esc(x.estimate)}</p><small>💳 ${esc(x.payment||"Pending")}</small></div><div class="bookingActions"><button onclick="trackBooking(${i})">Track</button><button onclick="viewDetails(${i})">Details</button><button onclick="reschedule(${i})">Reschedule</button><button onclick="cancelBooking(${i})">Cancel</button></div></article>`).join("")}
-function trackBooking(i){const x=bookings[i],idx=Math.max(0,states.indexOf(x.status));openModal(`<div class="trackHead"><div><span class="eyebrow">LIVE BOOKING TRACKER</span><h2>${esc(x.service)}</h2><p>${esc(x.id)} · ${esc(x.date)} · ${esc(x.time)}</p></div><span class="liveDot">● LIVE</span></div><div class="proCard"><div class="miniAvatar">${esc((x.pro||"FP").split(" ").map(v=>v[0]).join("").slice(0,2))}</div><div><b>${esc(x.pro)}</b><small>Verified professional · ★ 4.9</small></div><button onclick="toggleFavorite('${esc(x.pro)}')">♡</button></div><div class="timeline">${states.map((st,n)=>`<div class="tl ${n<idx?'done':''} ${n===idx?'current':''}"><span>${n<idx?'✓':n+1}</span><div><b>${st}</b><small>${n===0?'Booking confirmed':n===1?'Professional assigned':n===2?'Professional is on the way':n===3?'Service is in progress':'Service completed'}</small></div></div>`).join("")}</div><div class="locationBox"><b>📍 Service location</b><p>${esc(x.address)}</p><small>For a production version, live GPS can be connected to this tracker.</small></div><div class="trackActions"><button onclick="contactPro('${esc(x.pro)}')">💬 Chat</button><button onclick="contactPro('${esc(x.pro)}')">📞 Call</button></div>`)}
-function viewDetails(i){const x=bookings[i];openModal(`<span class="eyebrow">BOOKING DETAILS</span><h2>${esc(x.service)}</h2><div class="detailGrid"><div><small>BOOKING ID</small><b>${esc(x.id)}</b></div><div><small>STATUS</small><b>${esc(x.status)}</b></div><div><small>DATE</small><b>${esc(x.date)}</b></div><div><small>TIME</small><b>${esc(x.time)}</b></div><div><small>PROFESSIONAL</small><b>${esc(x.pro)}</b></div><div><small>PAYMENT</small><b>${esc(x.payment||"Pending")}</b></div><div><small>ESTIMATE</small><b>${esc(x.estimate)}</b></div><div><small>TRANSACTION</small><b>${esc(x.transaction||"—")}</b></div><div class="wide"><small>ADDRESS</small><b>${esc(x.address)}</b></div><div class="wide"><small>PROBLEM</small><b>${esc(x.problem||"Not specified")}</b></div></div><div class="detailActions"><button class="btn small" onclick="trackBooking(${i})">Track</button><button onclick="invoice(${i})">Invoice</button><button onclick="review(${i})">Review</button></div>`)}
-function reschedule(i){const x=bookings[i];openModal(`<h2>Reschedule booking</h2><p>${esc(x.service)} · ${esc(x.id)}</p><div class="form"><label>NEW DATE</label><input id="newDate" type="date" value="${x.date}" min="${new Date().toISOString().slice(0,10)}"><label>NEW TIME</label><select id="newTime"><option>${esc(x.time)}</option><option>9:00 AM</option><option>11:00 AM</option><option>2:00 PM</option><option>4:00 PM</option><option>6:30 PM</option></select><button class="btn" onclick="saveReschedule(${i})">Save new time →</button></div>`)}
-function saveReschedule(i){bookings[i].date=document.getElementById("newDate").value;bookings[i].time=document.getElementById("newTime").value;bookings[i].status="Confirmed";save();closeModal();notify("Booking rescheduled successfully.")}
-function cancelBooking(i){if(!confirm("Cancel this booking?"))return;bookings[i].status="Cancelled";bookings[i].cancelledAt=Date.now();save();notify("Booking cancelled.")}
-function invoice(i){const x=bookings[i];const total=x.total||parseInt((x.estimate.match(/\d[\d,]*/)||["399"])[0].replace(/,/g,""));openModal(`<div class="invoice"><span class="eyebrow">FIXORA INVOICE</span><h2>Invoice ${esc(x.id)}</h2><p>${esc(x.service)} · ${esc(x.date)}</p><div class="invoiceLine"><span>Service estimate</span><b>₹${total}</b></div><div class="invoiceLine"><span>Platform fee</span><b>₹20</b></div><div class="invoiceLine total"><span>Total</span><b>₹${total+20}</b></div><p>Payment: ${esc(x.payment||"Pending")} · Transaction: ${esc(x.transaction||"—")}</p><button class="btn" onclick="window.print()">Print invoice</button></div>`)}
-function review(i){const x=bookings[i];if(x.status!=="Completed"){alert("Reviews become available after the service is completed.");return}openModal(`<h2>Rate your service</h2><p>${esc(x.service)} · ${esc(x.pro)}</p><div class="stars">${[1,2,3,4,5].map(n=>`<button onclick="rate(${n})">★</button>`).join("")}</div><div class="form"><textarea id="reviewText" placeholder="Tell us about your experience"></textarea><button class="btn" onclick="saveReview(${i})">Submit Review</button></div>`)}
-function rate(n){document.querySelectorAll(".stars button").forEach((b,k)=>b.classList.toggle("on",k<n));document.querySelector(".stars").dataset.rating=n}
-function saveReview(i){bookings[i].review={rating:document.querySelector(".stars").dataset.rating||5,text:document.getElementById("reviewText").value};save();closeModal();notify("Thanks! Your review was saved.")}
-function openProfile(){const u=currentUser();if(!u){openAuth();return}openModal(`<span class="eyebrow">ACCOUNT</span><h2>My Profile</h2><div class="form"><label>FULL NAME</label><input id="pname" value="${esc(u.name)}"><label>EMAIL</label><input id="pemail" value="${esc(u.email)}" disabled><label>PHONE</label><input id="pphone" value="${esc(u.phone||"")}" placeholder="Phone number"><button class="btn" onclick="saveProfile()">Save profile →</button></div>`)}
-function saveProfile(){const u=currentUser();u.name=document.getElementById("pname").value.trim()||u.name;u.phone=document.getElementById("pphone").value.trim();localStorage.setItem("fixora_user",JSON.stringify(u));updateAuth();closeModal();notify("Profile updated.")}
-function openAddresses(){const a=JSON.parse(localStorage.getItem(ADDR)||"[]");openModal(`<span class="eyebrow">QUICK CHECKOUT</span><h2>Saved addresses</h2><div class="savedList">${a.length?a.map((x,i)=>`<div class="savedItem"><b>${esc(x.label)}</b><small>${esc(x.address)}</small><button onclick="deleteAddress(${i)">×</button></div>`).join(""):"<p>No saved addresses yet.</p>"}</div><div class="form"><label>LABEL</label><input id="addrLabel" placeholder="Home"><label>ADDRESS</label><textarea id="addrText" placeholder="Full address"></textarea><button class="btn" onclick="saveAddress()">Add address →</button></div>`)}
-function saveAddress(){const a=JSON.parse(localStorage.getItem(ADDR)||"[]");const label=document.getElementById("addrLabel").value.trim()||"Home",address=document.getElementById("addrText").value.trim();if(!address){alert("Enter an address.");return}a.unshift({label,address});localStorage.setItem(ADDR,JSON.stringify(a.slice(0,5)));openAddresses()}
-function deleteAddress(i){const a=JSON.parse(localStorage.getItem(ADDR)||"[]");a.splice(i,1);localStorage.setItem(ADDR,JSON.stringify(a));openAddresses()}
-function openFavorites(){const f=JSON.parse(localStorage.getItem(FAV)||"[]");openModal(`<span class="eyebrow">YOUR NETWORK</span><h2>Favorite professionals</h2>${f.length?f.map(x=>`<div class="savedItem"><b>❤️ ${esc(x)}</b><button onclick="toggleFavorite('${esc(x)}')">Remove</button></div>`).join(""):"<p>No favorites yet. Tap ♡ while tracking a professional.</p>"}`)}
-function toggleFavorite(p){let f=JSON.parse(localStorage.getItem(FAV)||"[]");if(f.includes(p))f=f.filter(x=>x!==p);else f.push(p);localStorage.setItem(FAV,JSON.stringify(f));openFavorites()}
-function openNotifications(){const n=[...bookings].slice(0,5).map(x=>`<div class="notif"><b>${esc(x.service)}</b><small>${esc(x.id)} · ${esc(x.status)}</small></div>`);openModal(`<span class="eyebrow">UPDATES</span><h2>Notifications</h2>${n.length?n.join(""):"<p>No new notifications.</p>"}`)}
-function openHistory(){const h=bookings.filter(x=>x.status==="Completed"||x.status==="Cancelled");openModal(`<span class="eyebrow">SERVICE HISTORY</span><h2>Your history</h2>${h.length?h.map(x=>`<div class="historyItem"><b>${esc(x.service)}</b><small>${esc(x.date)} · ${esc(x.status)} · ${esc(x.id)}</small></div>`).join(""):"<p>No completed or cancelled services yet.</p>"}`)}
-function contactPro(p){openModal(`<span class="eyebrow">FIXORA CHAT</span><h2>Chat with ${esc(p)}</h2><div class="chatMock"><div class="msg bot">Hi! I’m your Fixora professional. How can I help?</div><div class="chatInput"><input id="chatText" placeholder="Type a message..."><button onclick="sendChat()">→</button></div></div>`)}
-function sendChat(){const v=document.getElementById("chatText").value.trim();if(v){document.querySelector(".chatMock").insertAdjacentHTML("beforeend",`<div class="msg user">${esc(v)}</div><div class="msg bot">Thanks! Your message has been received.</div>`);document.getElementById("chatText").value=""}}
-function notify(t){openModal(`<div class="success"><div class="big">✓</div><h2>${esc(t)}</h2><button class="btn" onclick="closeModal()">Done</button></div>`)}
-function askAssistant(){const input=document.getElementById("problemInput"),text=input?.value.trim();if(!text)return;let s="Other";if(/ac|air.?condition|cool/i.test(text))s="AC & Cooling";else if(/leak|tap|pipe|water/i.test(text))s="Plumbing";else if(/electric|fan|switch|light|wire/i.test(text))s="Electrical";else if(/clean|bathroom|kitchen/i.test(text))s="Cleaning";else if(/fridge|washing|ro|appliance/i.test(text))s="Appliances";const box=document.querySelector(".chat"),old=box.querySelector(".chatInput");old?.remove();box.insertAdjacentHTML("beforeend",`<div class="msg user">${esc(text)}</div><div class="msg bot"><b>Likely service: ${s}</b><br>Estimated range: ${prices[s]}<br><br><button class="btn small" onclick="openBooking('${s}')">Book this service →</button></div><div class="chatInput"><input id="problemInput" placeholder="Describe another problem..."><button onclick="askAssistant()">→</button></div>`)}
-document.addEventListener("DOMContentLoaded",()=>{document.getElementById("modal")?.addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});updateAuth();render()});
+/* =====================================================
+   FIXORA — MAIN SCRIPT
+   Login • Signup • Booking • Payment • Tracking
+===================================================== */
+
+"use strict";
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+const $ = (id) => document.getElementById(id);
+
+function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem("fixoraUser")) || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveUser(user) {
+  localStorage.setItem("fixoraUser", JSON.stringify(user));
+}
+
+function getBookings() {
+  try {
+    return JSON.parse(
+      localStorage.getItem("fixoraBookings")
+    ) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveBookings(bookings) {
+  localStorage.setItem(
+    "fixoraBookings",
+    JSON.stringify(bookings)
+  );
+}
+
+function showToast(message) {
+
+  const toast = $("toast");
+
+  if (!toast) {
+    alert(message);
+    return;
+  }
+
+  toast.textContent = message;
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 3000);
+}
+
+function isLoggedIn() {
+  return localStorage.getItem("fixoraLoggedIn") === "true";
+}
+
+function requireLogin() {
+
+  if (!getUser() || !isLoggedIn()) {
+
+    showToast("Please login to continue.");
+
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 700);
+
+    return false;
+  }
+
+  return true;
+}
+
+
+/* =====================================================
+   SIGN UP
+===================================================== */
+
+const signupForm = $("signupForm");
+
+if (signupForm) {
+
+  signupForm.addEventListener("submit", function (event) {
+
+    event.preventDefault();
+
+    const name =
+      $("signupName")?.value.trim();
+
+    const email =
+      $("signupEmail")?.value.trim().toLowerCase();
+
+    const phone =
+      $("signupPhone")?.value.trim();
+
+    const password =
+      $("signupPassword")?.value;
+
+    const confirmPassword =
+      $("signupConfirm")?.value;
+
+
+    if (!name || !email || !phone || !password) {
+
+      alert("Please fill all required fields.");
+
+      return;
+    }
+
+
+    if (phone.length < 10) {
+
+      alert("Please enter a valid phone number.");
+
+      return;
+    }
+
+
+    if (password.length < 6) {
+
+      alert(
+        "Password must contain at least 6 characters."
+      );
+
+      return;
+    }
+
+
+    if (password !== confirmPassword) {
+
+      alert("Passwords do not match.");
+
+      return;
+    }
+
+
+    const existingUser = getUser();
+
+    if (
+      existingUser &&
+      existingUser.email === email
+    ) {
+
+      alert(
+        "An account with this email already exists."
+      );
+
+      window.location.href = "login.html";
+
+      return;
+    }
+
+
+    const user = {
+
+      name,
+      email,
+      phone,
+      password,
+
+      createdAt:
+        new Date().toISOString()
+
+    };
+
+
+    saveUser(user);
+
+    localStorage.setItem(
+      "fixoraLoggedIn",
+      "false"
+    );
+
+
+    alert(
+      "🎉 Account created successfully!"
+    );
+
+
+    window.location.href =
+      "login.html";
+
+  });
+}
+
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+const loginForm = $("loginForm");
+
+if (loginForm) {
+
+  loginForm.addEventListener("submit", function (event) {
+
+    event.preventDefault();
+
+
+    const email =
+      $("loginEmail")?.value
+        .trim()
+        .toLowerCase();
+
+    const password =
+      $("loginPassword")?.value;
+
+
+    if (!email || !password) {
+
+      alert(
+        "Please enter your email and password."
+      );
+
+      return;
+    }
+
+
+    const user = getUser();
+
+
+    if (!user) {
+
+      alert(
+        "No account found. Please create an account first."
+      );
+
+      setTimeout(() => {
+
+        window.location.href =
+          "signup.html";
+
+      }, 500);
+
+      return;
+    }
+
+
+    if (
+      email !== user.email ||
+      password !== user.password
+    ) {
+
+      alert(
+        "❌ Incorrect email or password."
+      );
+
+      return;
+    }
+
+
+    localStorage.setItem(
+      "fixoraLoggedIn",
+      "true"
+    );
+
+
+    const remember =
+      $("rememberMe")?.checked;
+
+    localStorage.setItem(
+      "fixoraRemember",
+      remember ? "true" : "false"
+    );
+
+
+    alert(
+      `Welcome back, ${user.name}! 👋`
+    );
+
+
+    window.location.href =
+      "index.html";
+
+  });
+}
+
+
+/* =====================================================
+   NAVBAR
+===================================================== */
+
+function updateNavbar() {
+
+  const user = getUser();
+
+  const welcome =
+    $("userWelcome");
+
+  const loginBtn =
+    $("loginBtn");
+
+  const logoutBtn =
+    $("logoutBtn");
+
+
+  if (!welcome) return;
+
+
+  if (
+    user &&
+    isLoggedIn()
+  ) {
+
+    welcome.textContent =
+      `Hi, ${user.name}`;
+
+    if (loginBtn) {
+
+      loginBtn.classList.add(
+        "hidden"
+      );
+
+    }
+
+    if (logoutBtn) {
+
+      logoutBtn.classList.remove(
+        "hidden"
+      );
+
+    }
+
+  } else {
+
+    welcome.textContent = "";
+
+    if (loginBtn) {
+
+      loginBtn.classList.remove(
+        "hidden"
+      );
+
+    }
+
+    if (logoutBtn) {
+
+      logoutBtn.classList.add(
+        "hidden"
+      );
+
+    }
+
+  }
+}
+
+updateNavbar();
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+if ($("logoutBtn")) {
+
+  $("logoutBtn").addEventListener(
+    "click",
+    function () {
+
+      localStorage.setItem(
+        "fixoraLoggedIn",
+        "false"
+      );
+
+      showToast(
+        "Logged out successfully."
+      );
+
+      setTimeout(() => {
+
+        window.location.reload();
+
+      }, 700);
+
+    }
+  );
+}
+
+
+/* =====================================================
+   BOOK SERVICE
+===================================================== */
+
+document
+  .querySelectorAll(".bookBtn")
+  .forEach((button) => {
+
+    button.addEventListener(
+      "click",
+      function () {
+
+        if (!requireLogin()) {
+          return;
+        }
+
+
+        const card =
+          button.closest(
+            ".service-card"
+          );
+
+
+        if (!card) return;
+
+
+        const service =
+          card.dataset.service;
+
+
+        if ($("serviceInput")) {
+
+          $("serviceInput").value =
+            service;
+
+        }
+
+
+        if ($("bookingModal")) {
+
+          $("bookingModal")
+            .classList
+            .remove("hidden");
+
+        }
+
+      }
+    );
+
+  });
+
+
+/* =====================================================
+   CLOSE MODALS
+===================================================== */
+
+if ($("closeBooking")) {
+
+  $("closeBooking").addEventListener(
+    "click",
+    () => {
+
+      $("bookingModal")
+        ?.classList
+        .add("hidden");
+
+    }
+  );
+
+}
+
+
+if ($("closePayment")) {
+
+  $("closePayment").addEventListener(
+    "click",
+    () => {
+
+      $("paymentModal")
+        ?.classList
+        .add("hidden");
+
+    }
+  );
+
+}
+
+
+if ($("closeTracking")) {
+
+  $("closeTracking").addEventListener(
+    "click",
+    () => {
+
+      $("trackingModal")
+        ?.classList
+        .add("hidden");
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   BOOKING FORM
+===================================================== */
+
+let pendingBooking = null;
+
+const bookingForm =
+  $("bookingForm");
+
+
+if (bookingForm) {
+
+  bookingForm.addEventListener(
+    "submit",
+    function (event) {
+
+      event.preventDefault();
+
+
+      if (!requireLogin()) {
+        return;
+      }
+
+
+      const service =
+        $("serviceInput")?.value;
+
+      const professional =
+        $("professionalInput")?.value;
+
+      const date =
+        $("dateInput")?.value;
+
+      const time =
+        $("timeInput")?.value;
+
+      const address =
+        $("addressInput")?.value.trim();
+
+      const problem =
+        $("problemInput")?.value.trim();
+
+      const payment =
+        $("paymentInput")?.value;
+
+
+      if (
+        !service ||
+        !professional ||
+        !date ||
+        !time ||
+        !address
+      ) {
+
+        alert(
+          "Please complete all booking details."
+        );
+
+        return;
+      }
+
+
+      const selectedDate =
+        new Date(`${date}T${time}`);
+
+      if (
+        selectedDate <
+        new Date()
+      ) {
+
+        alert(
+          "Please select a future date and time."
+        );
+
+        return;
+      }
+
+
+      pendingBooking = {
+
+        service,
+
+        professional,
+
+        date,
+
+        time,
+
+        address,
+
+        problem,
+
+        payment,
+
+        amount: 499
+
+      };
+
+
+      $("bookingModal")
+        ?.classList
+        .add("hidden");
+
+
+      if ($("paymentSummary")) {
+
+        $("paymentSummary").innerHTML = `
+
+          <h3>${service}</h3>
+
+          <p>
+            👨‍🔧 Professional:
+            <strong>${professional}</strong>
+          </p>
+
+          <p>
+            📅 Date:
+            <strong>${date}</strong>
+          </p>
+
+          <p>
+            ⏰ Time:
+            <strong>${time}</strong>
+          </p>
+
+          <p>
+            📍 Address:
+            <strong>${address}</strong>
+          </p>
+
+          <hr>
+
+          <h2>
+            Total: ₹${pendingBooking.amount}
+          </h2>
+
+        `;
+
+      }
+
+
+      if ($("paymentModal")) {
+
+        $("paymentModal")
+          .classList
+          .remove("hidden");
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   PAYMENT METHOD
+===================================================== */
+
+document
+  .querySelectorAll(
+    ".payment-methods button"
+  )
+  .forEach((button) => {
+
+    button.addEventListener(
+      "click",
+      function () {
+
+        document
+          .querySelectorAll(
+            ".payment-methods button"
+          )
+          .forEach((item) => {
+
+            item.classList.remove(
+              "selected"
+            );
+
+          });
+
+
+        button.classList.add(
+          "selected"
+        );
+
+
+        if (pendingBooking) {
+
+          pendingBooking.payment =
+            button.dataset.method;
+
+        }
+
+      }
+    );
+
+  });
+
+
+/* =====================================================
+   PAYMENT + BOOKING CONFIRMATION
+===================================================== */
+
+if ($("payButton")) {
+
+  $("payButton").addEventListener(
+    "click",
+    function () {
+
+      if (!pendingBooking) {
+
+        alert(
+          "Please create a booking first."
+        );
+
+        return;
+      }
+
+
+      const bookingId =
+        "FX" +
+        Date.now()
+          .toString()
+          .slice(-8);
+
+
+      const transactionId =
+        "TX" +
+        Date.now()
+          .toString()
+          .slice(-8);
+
+
+      const booking = {
+
+        ...pendingBooking,
+
+        id: bookingId,
+
+        transactionId,
+
+        status: "Confirmed",
+
+        trackingStep: 2,
+
+        createdAt:
+          new Date().toISOString()
+
+      };
+
+
+      const bookings =
+        getBookings();
+
+
+      bookings.unshift(
+        booking
+      );
+
+
+      saveBookings(
+        bookings
+      );
+
+
+      $("paymentModal")
+        ?.classList
+        .add("hidden");
+
+
+      pendingBooking = null;
+
+
+      alert(
+        `✅ Booking Confirmed!\n\nBooking ID: ${bookingId}\nTransaction ID: ${transactionId}`
+      );
+
+
+      renderBookings();
+
+
+      const bookingSection =
+        $("bookings");
+
+
+      if (bookingSection) {
+
+        bookingSection.scrollIntoView({
+          behavior: "smooth"
+        });
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   RENDER BOOKINGS
+===================================================== */
+
+function renderBookings() {
+
+  const list =
+    $("bookingList");
+
+
+  if (!list) return;
+
+
+  const bookings =
+    getBookings();
+
+
+  if (!bookings.length) {
+
+    list.innerHTML = `
+
+      <div class="empty-state">
+
+        <div>📅</div>
+
+        <h3>No bookings yet</h3>
+
+        <p>
+          Book your first Fixora service.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  list.innerHTML =
+    bookings
+      .map((booking) => {
+
+        const statusClass =
+          booking.status ===
+          "Cancelled"
+            ? "cancelled"
+            : "";
+
+
+        return `
+
+          <div
+            class="booking-card ${statusClass}"
+          >
+
+            <div class="booking-top">
+
+              <div>
+
+                <span class="status">
+
+                  ${
+                    booking.status ===
+                    "Cancelled"
+                      ? "✕ Cancelled"
+                      : "✓ " +
+                        booking.status
+                  }
+
+                </span>
+
+                <h3>
+                  ${booking.service}
+                </h3>
+
+                <p>
+                  Booking ID:
+                  <strong>
+                    ${booking.id}
+                  </strong>
+                </p>
+
+              </div>
+
+
+              <div class="booking-price">
+                ₹${booking.amount}
+              </div>
+
+            </div>
+
+
+            <div class="booking-details">
+
+              <div>
+
+                📅
+
+                <strong>
+                  Date
+                </strong>
+
+                <span>
+                  ${booking.date}
+                </span>
+
+              </div>
+
+
+              <div>
+
+                ⏰
+
+                <strong>
+                  Time
+                </strong>
+
+                <span>
+                  ${booking.time}
+                </span>
+
+              </div>
+
+
+              <div>
+
+                👨‍🔧
+
+                <strong>
+                  Professional
+                </strong>
+
+                <span>
+                  ${booking.professional}
+                </span>
+
+              </div>
+
+
+              <div>
+
+                📍
+
+                <strong>
+                  Address
+                </strong>
+
+                <span>
+                  ${booking.address}
+                </span>
+
+              </div>
+
+            </div>
+
+
+            <div class="booking-actions">
+
+              ${
+                booking.status !==
+                "Cancelled"
+
+                ? `
+
+                  <button
+                    class="btn"
+                    onclick="
+                      trackBooking('${booking.id}')
+                    "
+                  >
+                    🚗 Track
+                  </button>
+
+                  <button
+                    class="btn outline"
+                    onclick="
+                      viewInvoice('${booking.id}')
+                    "
+                  >
+                    🧾 Invoice
+                  </button>
+
+                  <button
+                    class="btn danger"
+                    onclick="
+                      cancelBooking('${booking.id}')
+                    "
+                  >
+                    Cancel
+                  </button>
+
+                `
+
+                : `
+
+                  <button
+                    class="btn outline"
+                    onclick="
+                      viewInvoice('${booking.id}')
+                    "
+                  >
+                    🧾 View Invoice
+                  </button>
+
+                `
+              }
+
+            </div>
+
+          </div>
+
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* =====================================================
+   TRACK BOOKING
+===================================================== */
+
+function trackBooking(id) {
+
+  const booking =
+    getBookings().find(
+      (item) =>
+        item.id === id
+    );
+
+
+  if (!booking) return;
+
+
+  if ($("trackingDetails")) {
+
+    $("trackingDetails").innerHTML = `
+
+      <div class="track-summary">
+
+        <h3>
+          ${booking.service}
+        </h3>
+
+        <p>
+          🆔 Booking ID:
+          ${booking.id}
+        </p>
+
+        <p>
+          👨‍🔧
+          ${booking.professional}
+        </p>
+
+        <p>
+          📅
+          ${booking.date}
+          &nbsp;
+          ⏰
+          ${booking.time}
+        </p>
+
+        <p>
+          📍
+          ${booking.address}
+        </p>
+
+      </div>
+
+    `;
+
+  }
+
+
+  if ($("trackingModal")) {
+
+    $("trackingModal")
+      .classList
+      .remove("hidden");
+
+  }
+
+}
+
+
+/* =====================================================
+   CANCEL BOOKING
+===================================================== */
+
+function cancelBooking(id) {
+
+  const booking =
+    getBookings().find(
+      (item) =>
+        item.id === id
+    );
+
+
+  if (!booking) return;
+
+
+  const confirmed =
+    confirm(
+      `Cancel your ${booking.service} booking?`
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const bookings =
+    getBookings();
+
+
+  const updated =
+    bookings.map(
+      (item) => {
+
+        if (item.id === id) {
+
+          return {
+
+            ...item,
+
+            status:
+              "Cancelled",
+
+            cancelledAt:
+              new Date().toISOString()
+
+          };
+
+        }
+
+
+        return item;
+
+      }
+    );
+
+
+  saveBookings(
+    updated
+  );
+
+
+  renderBookings();
+
+
+  showToast(
+    "Booking cancelled successfully."
+  );
+
+}
+
+
+/* =====================================================
+   INVOICE
+===================================================== */
+
+function viewInvoice(id) {
+
+  const booking =
+    getBookings().find(
+      (item) =>
+        item.id === id
+    );
+
+
+  if (!booking) return;
+
+
+  alert(
+
+`━━━━━━━━━━━━━━━━━━━━
+       FIXORA
+      INVOICE
+━━━━━━━━━━━━━━━━━━━━
+
+Booking ID:
+${booking.id}
+
+Service:
+${booking.service}
+
+Professional:
+${booking.professional}
+
+Date:
+${booking.date}
+
+Time:
+${booking.time}
+
+Payment:
+${booking.payment}
+
+Transaction ID:
+${booking.transactionId}
+
+Amount:
+₹${booking.amount}
+
+Status:
+${booking.status}
+
+━━━━━━━━━━━━━━━━━━━━
+Thank you for choosing Fixora!
+━━━━━━━━━━━━━━━━━━━━`
+
+  );
+
+}
+
+
+/* =====================================================
+   AUTO-FILL REMEMBERED EMAIL
+===================================================== */
+
+if ($("loginEmail")) {
+
+  const rememberedEmail =
+    localStorage.getItem(
+      "fixoraRememberedEmail"
+    );
+
+
+  if (rememberedEmail) {
+
+    $("loginEmail").value =
+      rememberedEmail;
+
+  }
+
+}
+
+
+/* =====================================================
+   REMEMBER ME
+===================================================== */
+
+if ($("loginForm")) {
+
+  $("loginForm")
+    .addEventListener(
+      "submit",
+      function () {
+
+        const remember =
+          $("rememberMe")?.checked;
+
+
+        if (
+          remember &&
+          $("loginEmail")
+        ) {
+
+          localStorage.setItem(
+            "fixoraRememberedEmail",
+            $("loginEmail").value
+          );
+
+        } else {
+
+          localStorage.removeItem(
+            "fixoraRememberedEmail"
+          );
+
+        }
+
+      }
+    );
+
+}
+
+
+/* =====================================================
+   SET MINIMUM BOOKING DATE
+===================================================== */
+
+if ($("dateInput")) {
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+
+  $("dateInput").min =
+    today;
+
+}
+
+
+/* =====================================================
+   INITIALIZE
+===================================================== */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
+
+    updateNavbar();
+
+    renderBookings();
+
+  }
+);
