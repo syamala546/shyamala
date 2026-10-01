@@ -1,1 +1,202 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create Account — Fixora</title><link rel="stylesheet" href="styles.css"></head><body><div class="glow g1"></div><div class="glow g2"></div><main class="authPage"><div class="authWrap"><section class="authInfo"><a class="logo" href="index.html"><b>F</b>Fixora</a><h1>Your home.<br><span>Your account.</span></h1><p>Create your Fixora account once. Then book services, manage appointments and track your service history.</p><p>🔒 Your account stays on this browser in this MVP.</p></section><section class="authForm"><a class="backHome" href="index.html">← Back to Fixora</a><h2>Create an account</h2><p class="sub">Enter your details to get started.</p><div class="form"><label>FULL NAME</label><input id="name" placeholder="Your full name"><label>EMAIL</label><input id="email" type="email" placeholder="you@example.com"><label>PHONE</label><input id="phone" type="tel" placeholder="10-digit mobile number"><label>PASSWORD</label><input id="password" type="password" placeholder="Create a password"><label>CONFIRM PASSWORD</label><input id="confirm" type="password" placeholder="Repeat your password"><button class="btn" onclick="signup()">Create Account →</button><div id="msg" class="authMsg"></div></div><div class="authSwitch">Already have an account? <a href="login.html">Login</a></div></section></div></main><script>function signup(){const n=document.getElementById('name').value.trim(),e=document.getElementById('email').value.trim().toLowerCase(),ph=document.getElementById('phone').value.trim(),p=document.getElementById('password').value,c=document.getElementById('confirm').value,m=document.getElementById('msg');m.className='authMsg';if(!n||!e||!ph||!p||!c){m.className='authMsg error';m.textContent='Please fill all fields.';return}if(!/^\d{10}$/.test(ph)){m.className='authMsg error';m.textContent='Enter a valid 10-digit phone number.';return}if(p.length<6){m.className='authMsg error';m.textContent='Password must be at least 6 characters.';return}if(p!==c){m.className='authMsg error';m.textContent='Passwords do not match.';return}let a=JSON.parse(localStorage.getItem('fixora_accounts')||'[]');if(a.some(x=>x.email===e)){m.className='authMsg error';m.textContent='An account with this email already exists. Please login.';return}a.push({name:n,email:e,phone:ph,password:p,createdAt:Date.now()});localStorage.setItem('fixora_accounts',JSON.stringify(a));localStorage.setItem('fixora_user',JSON.stringify({name:n,email:e}));m.className='authMsg ok';m.textContent='Account created successfully. Opening Fixora…';setTimeout(()=>location.href='index.html',700)}</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Create Account — Fixora</title>
+
+  <link rel="stylesheet" href="styles.css">
+
+</head>
+
+
+<body class="auth-page">
+
+  <div class="auth-container">
+
+    <!-- LOGO -->
+
+    <a
+      href="index.html"
+      class="logo"
+    >
+      FIX<span>ORA</span>
+    </a>
+
+
+    <!-- SIGNUP CARD -->
+
+    <div class="auth-card">
+
+      <div class="auth-icon">
+        ✨
+      </div>
+
+
+      <h1>
+        Create Account
+      </h1>
+
+
+      <p>
+        Join Fixora and manage all your home services.
+      </p>
+
+
+      <form id="signupForm">
+
+        <!-- NAME -->
+
+        <label for="signupName">
+          Full Name
+        </label>
+
+        <input
+          id="signupName"
+          type="text"
+          placeholder="Enter your full name"
+          autocomplete="name"
+          required
+        >
+
+
+        <!-- EMAIL -->
+
+        <label for="signupEmail">
+          Email Address
+        </label>
+
+        <input
+          id="signupEmail"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        >
+
+
+        <!-- PHONE -->
+
+        <label for="signupPhone">
+          Phone Number
+        </label>
+
+        <input
+          id="signupPhone"
+          type="tel"
+          placeholder="Enter your 10 digit mobile number"
+          autocomplete="tel"
+          minlength="10"
+          maxlength="10"
+          required
+        >
+
+
+        <!-- PASSWORD -->
+
+        <label for="signupPassword">
+          Password
+        </label>
+
+        <input
+          id="signupPassword"
+          type="password"
+          placeholder="Create a password"
+          autocomplete="new-password"
+          minlength="6"
+          required
+        >
+
+
+        <!-- CONFIRM PASSWORD -->
+
+        <label for="signupConfirm">
+          Confirm Password
+        </label>
+
+        <input
+          id="signupConfirm"
+          type="password"
+          placeholder="Confirm your password"
+          autocomplete="new-password"
+          minlength="6"
+          required
+        >
+
+
+        <!-- TERMS -->
+
+        <label class="terms-check">
+
+          <input
+            type="checkbox"
+            id="termsCheck"
+            required
+          >
+
+          <span>
+            I agree to Fixora's
+            <a href="#" onclick="return false;">
+              Terms & Conditions
+            </a>
+          </span>
+
+        </label>
+
+
+        <!-- CREATE ACCOUNT -->
+
+        <button
+          class="btn full"
+          type="submit"
+        >
+          Create Account
+        </button>
+
+      </form>
+
+
+      <!-- LOGIN -->
+
+      <p class="auth-bottom">
+
+        Already have an account?
+
+        <a href="login.html">
+          Login
+        </a>
+
+      </p>
+
+
+      <!-- BACK -->
+
+      <a
+        class="back-home"
+        href="index.html"
+      >
+        ← Back to Fixora
+      </a>
+
+    </div>
+
+
+    <p class="secure-note">
+      🔒 Your information is stored securely.
+    </p>
+
+  </div>
+
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>
