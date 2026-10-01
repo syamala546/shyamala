@@ -1,1 +1,115 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login — Fixora</title><link rel="stylesheet" href="styles.css"></head><body><div class="glow g1"></div><div class="glow g2"></div><main class="authPage"><div class="authWrap"><section class="authInfo"><a class="logo" href="index.html"><b>F</b>Fixora</a><h1>Welcome<br><span>back.</span></h1><p>Sign in to manage your bookings, track professionals and keep your home service history in one place.</p><p>✓ Verified professionals<br>✓ Clear estimates<br>✓ Booking history</p></section><section class="authForm"><a class="backHome" href="index.html">← Back to Fixora</a><h2>Login</h2><p class="sub">Use the account you created with Fixora.</p><div class="form"><label>EMAIL</label><input id="email" type="email" placeholder="you@example.com"><label>PASSWORD</label><input id="password" type="password" placeholder="••••••••"><button class="btn" onclick="doLogin()">Login →</button><div id="msg" class="authMsg"></div></div><div class="authSwitch">Don't have an account? <a href="signup.html">Create an account</a></div></section></div></main><script>function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])}function doLogin(){const e=document.getElementById('email').value.trim().toLowerCase(),p=document.getElementById('password').value;const accounts=JSON.parse(localStorage.getItem('fixora_accounts')||'[]');const a=accounts.find(x=>x.email===e&&x.password===p);const m=document.getElementById('msg');if(!a){m.className='authMsg error';m.textContent='Email or password is incorrect. If you are new, create an account first.';return}localStorage.setItem('fixora_user',JSON.stringify({name:a.name,email:a.email}));m.className='authMsg ok';m.textContent='Login successful. Opening Fixora…';setTimeout(()=>location.href='index.html',500)}</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Login — Fixora</title>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="auth-page">
+
+  <div class="auth-container">
+
+    <a href="index.html" class="logo">
+      FIX<span>ORA</span>
+    </a>
+
+    <div class="auth-card">
+
+      <div class="auth-icon">🔐</div>
+
+      <h1>Welcome Back</h1>
+
+      <p>Login to manage your Fixora bookings.</p>
+
+      <form id="loginForm">
+
+        <label for="loginEmail">Email Address</label>
+
+        <input
+          id="loginEmail"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        >
+
+        <label for="loginPassword">Password</label>
+
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        >
+
+        <div class="password-options">
+
+          <label class="remember">
+            <input
+              type="checkbox"
+              id="rememberMe"
+            >
+            Remember me
+          </label>
+
+          <button
+            type="button"
+            class="forgot-btn"
+            onclick="alert('Password reset will be available soon.')"
+          >
+            Forgot Password?
+          </button>
+
+        </div>
+
+        <button
+          class="btn full"
+          type="submit"
+        >
+          Login
+        </button>
+
+      </form>
+
+      <div class="divider">
+        <span>OR</span>
+      </div>
+
+      <button
+        type="button"
+        class="social-login"
+        onclick="alert('Google Login will be connected soon.')"
+      >
+        <span>G</span>
+        Continue with Google
+      </button>
+
+      <p class="auth-bottom">
+        Don't have an account?
+        <a href="signup.html">Create an Account</a>
+      </p>
+
+      <a
+        class="back-home"
+        href="index.html"
+      >
+        ← Back to Fixora
+      </a>
+
+    </div>
+
+    <p class="secure-note">
+      🔒 Your account is protected by Fixora security.
+    </p>
+
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
